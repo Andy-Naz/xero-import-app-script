@@ -7,7 +7,7 @@ function onOpen() {
     )
     .addSeparator()
     .addItem(
-      'Prepare EUR',
+      'Prepare Template',
       'prepareEURTemplate'
     )
     .addItem(
