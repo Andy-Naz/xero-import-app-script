@@ -1,0 +1,6 @@
+.gitattributes
+.git/**
+.gitignore
+.claspignore
+node_modules/**
+README.md
