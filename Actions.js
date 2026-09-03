@@ -5,89 +5,37 @@
  * Вызывается из меню:
  * MySky → Find Row
  */
-function findLastImportedTransaction() {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+function prepareTemplate(templateKey) {
+  const spreadsheet =
+    SpreadsheetApp.getActiveSpreadsheet();
+
   const ui = SpreadsheetApp.getUi();
 
   try {
-    const sheets = getRequiredSheets_(spreadsheet);
-
-    const matchedRow = findMatchingTransactionRow_(
+    const sheets = getRequiredSheets_(
       spreadsheet,
-      sheets.template,
-      sheets.transactions
+      templateKey
     );
 
-    if (matchedRow === null) {
-      ui.alert(
-        'Совпадение не найдено',
-        'Строка 2 листа EUR не найдена в банковской выписке.',
-        ui.ButtonSet.OK
+    const matchedTransactionRow =
+      findMatchingTransactionRow_(
+        spreadsheet,
+        sheets.template,
+        sheets.transactions
       );
-
-      return null;
-    }
-
-    ui.alert(
-      'Операция найдена',
-      `Совпавшая строка на листе EUR_transactions: ${matchedRow}`,
-      ui.ButtonSet.OK
-    );
-
-    return matchedRow;
-  } catch (error) {
-    showError_(error);
-    return null;
-  }
-}
-
-
-/**
- * Архивирует текущие данные EUR в EUR_XERO
- * и переносит новые операции из EUR_transactions в EUR.
- *
- * Payee на этом этапе переносится без гармонизации:
- * EUR_transactions Description1 → EUR Payee.
- *
- * Гармонизация Payee запускается отдельно:
- * MySky → Update Payees
- *
- * Вызывается из меню:
- * MySky → Prepare EUR
- */
-function prepareEURTemplate() {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const ui = SpreadsheetApp.getUi();
-
-  try {
-    const sheets = getRequiredSheets_(spreadsheet);
-
-    /*
-     * 1. Ищем в банковской выписке операцию,
-     * соответствующую первой строке текущего EUR.
-     */
-    const matchedTransactionRow = findMatchingTransactionRow_(
-      spreadsheet,
-      sheets.template,
-      sheets.transactions
-    );
 
     if (matchedTransactionRow === null) {
       ui.alert(
         'Операция не найдена',
-        'Подготовка остановлена: EUR!2 не найдена в банковской выписке.',
+        `Подготовка ${templateKey} остановлена: ` +
+        `первая строка листа "${templateKey}" ` +
+        'не найдена в банковской выписке.',
         ui.ButtonSet.OK
       );
 
       return;
     }
 
-    /*
-     * Новые банковские операции находятся между:
-     *
-     * EUR_transactions!11
-     * и строкой перед найденной операцией.
-     */
     const newTransactionsCount =
       matchedTransactionRow -
       CONFIG.TRANSACTIONS.FIRST_DATA_ROW;
@@ -95,18 +43,13 @@ function prepareEURTemplate() {
     if (newTransactionsCount <= 0) {
       ui.alert(
         'Новых операций нет',
-        `Найденная операция находится в строке ${matchedTransactionRow}. ` +
-        'Выше неё в выписке нет новых операций.',
+        `Для ${templateKey} новых операций нет.`,
         ui.ButtonSet.OK
       );
 
       return;
     }
 
-    /*
-     * 2. Считаем количество текущих строк EUR
-     * по непрерывно заполненному столбцу A.
-     */
     const currentTemplateRowCount =
       getContiguousDataRowCount_(
         sheets.template,
@@ -116,51 +59,34 @@ function prepareEURTemplate() {
 
     if (currentTemplateRowCount === 0) {
       throw new Error(
-        'На листе EUR нет данных для переноса в историю.'
+        `На листе "${templateKey}" нет данных ` +
+        'для переноса в историю.'
       );
     }
 
-    /*
-     * 3. Читаем текущие данные EUR.
-     */
-    const currentTemplateData = readTemplateData_(
-      sheets.template,
-      currentTemplateRowCount
-    );
+    const currentTemplateData =
+      readTemplateData_(
+        sheets.template,
+        currentTemplateRowCount
+      );
 
-    /*
-     * 4. Читаем новые операции банковской выписки.
-     */
-    const newTransactionRows = readNewTransactionRows_(
-      sheets.transactions,
-      newTransactionsCount
-    );
+    const newTransactionRows =
+      readNewTransactionRows_(
+        sheets.transactions,
+        newTransactionsCount
+      );
 
-    /*
-     * 5. Преобразуем строки UBS в формат Xero.
-     *
-     * Value date → *Date
-     * Debit + Credit → *Amount
-     * Description1 → Payee
-     * Description3 → Description
-     */
     const newTemplateData =
       convertTransactionsToTemplate_(
         newTransactionRows
       );
 
-    /*
-     * 6. Добавляем текущий EUR в начало EUR_XERO.
-     */
     archiveTemplateData_(
       sheets.template,
       sheets.history,
       currentTemplateData
     );
 
-    /*
-     * 7. Очищаем текущий EUR и записываем новые операции.
-     */
     replaceTemplateData_(
       sheets.template,
       newTemplateData,
@@ -168,17 +94,20 @@ function prepareEURTemplate() {
     );
 
     spreadsheet.toast(
-      `${currentTemplateRowCount} строк перенесено в EUR_XERO; ` +
-      `${newTemplateData.length} строк загружено в EUR.`,
+      `${templateKey}: ` +
+      `${currentTemplateRowCount} строк архивировано; ` +
+      `${newTemplateData.length} новых строк загружено.`,
       'MySky',
       8
     );
 
     ui.alert(
-      'Шаблон подготовлен',
+      `${templateKey} подготовлен`,
       `Найденная строка выписки: ${matchedTransactionRow}\n\n` +
-      `Перенесено в EUR_XERO: ${currentTemplateRowCount} строк\n` +
-      `Загружено в EUR: ${newTemplateData.length} строк`,
+      `Перенесено в ${templateKey}_XERO: ` +
+      `${currentTemplateRowCount}\n` +
+      `Загружено в ${templateKey}: ` +
+      `${newTemplateData.length}`,
       ui.ButtonSet.OK
     );
   } catch (error) {
@@ -213,12 +142,17 @@ function prepareEURTemplate() {
  * Вызывается из меню:
  * MySky → Update Payees
  */
-function updateEURPayees() {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+function updatePayees(templateKey) {
+  const spreadsheet =
+    SpreadsheetApp.getActiveSpreadsheet();
+
   const ui = SpreadsheetApp.getUi();
 
   try {
-    const sheets = getRequiredSheets_(spreadsheet);
+    const sheets = getRequiredSheets_(
+      spreadsheet,
+      templateKey
+    );
 
     /*
      * Считаем количество операций на EUR
@@ -331,15 +265,16 @@ function updateEURPayees() {
       8
     );
 
-    ui.alert(
-      'Payee обработаны',
-      `Всего строк: ${rowCount}\n\n` +
-      `Заменено по справочнику: ${replacedCount}\n` +
-      `Уже было обработано: ${alreadyProcessedCount}\n` +
-      `Не найдено в справочнике: ${notFoundCount}\n` +
-      `Пустых Payee: ${emptyCount}`,
-      ui.ButtonSet.OK
-    );
+  ui.alert(
+    `${templateKey}: Payee обработаны`,
+    `Всего строк: ${rowCount}\n\n` +
+    `Заменено по справочнику: ${replacedCount}\n` +
+    `Уже было обработано: ${alreadyProcessedCount}\n` +
+    `Не найдено в справочнике: ${notFoundCount}\n` +
+    `Пустых Payee: ${emptyCount}`,
+    ui.ButtonSet.OK
+  );
+  
   } catch (error) {
     showError_(error);
   }

@@ -1,21 +1,31 @@
 /**
  * Получает обязательные рабочие листы.
  */
-function getRequiredSheets_(spreadsheet) {
+function getRequiredSheets_(
+  spreadsheet,
+  templateKey
+) {
+  validateTemplateKey_(templateKey);
+
   return {
     template: getSheetOrThrow_(
       spreadsheet,
-      CONFIG.SHEETS.TEMPLATE
+      templateKey
     ),
 
     history: getSheetOrThrow_(
       spreadsheet,
-      CONFIG.SHEETS.HISTORY
+      `${templateKey}_XERO`
     ),
 
     transactions: getSheetOrThrow_(
       spreadsheet,
-      CONFIG.SHEETS.TRANSACTIONS
+      `${templateKey}_transactions`
+    ),
+
+    contacts: getSheetOrThrow_(
+      spreadsheet,
+      CONFIG.SHEETS.CONTACTS
     )
   };
 }

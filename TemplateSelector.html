@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 16px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+
+      select {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 16px;
+      }
+
+      .buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      button {
+        padding: 8px 14px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+
+  <body>
+    <label for="templateKey">
+      Select template
+    </label>
+
+    <select id="templateKey">
+      <? for (let i = 0; i < templateKeys.length; i++) { ?>
+        <option value="<?= templateKeys[i] ?>">
+          <?= templateKeys[i] ?>
+        </option>
+      <? } ?>
+    </select>
+
+    <div class="buttons">
+      <button
+        type="button"
+        onclick="google.script.host.close()"
+      >
+        Cancel
+      </button>
+
+      <button
+        type="button"
+        onclick="runAction()"
+      >
+        Run
+      </button>
+    </div>
+
+    <script>
+      const action = '<?= action ?>';
+
+      function runAction() {
+        const templateKey =
+          document.getElementById('templateKey').value;
+
+        google.script.run
+          .withSuccessHandler(function() {
+            google.script.host.close();
+          })
+          .withFailureHandler(function(error) {
+            alert(error.message || error);
+          })
+          .runTemplateAction(
+            action,
+            templateKey
+          );
+      }
+    </script>
+  </body>
+</html>

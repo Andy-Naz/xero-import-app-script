@@ -8,11 +8,11 @@ function onOpen() {
     .addSeparator()
     .addItem(
       'Prepare Template',
-      'prepareEURTemplate'
+      'showPrepareTemplateDialog'
     )
     .addItem(
       'Update Payees',
-      'updateEURPayees'
+      'showUpdatePayeesDialog'
     )
     .addToUi();
 }
